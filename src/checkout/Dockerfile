@@ -1,26 +1,19 @@
-# Copyright The OpenTelemetry Authors
-# SPDX-License-Identifier: Apache-2.0
+FROM golang:1.27-alpine3.23 AS builder
 
+WORKDIR /usr/src/app
 
-FROM golang:1.22-alpine AS builder
+COPY . .
 
-WORKDIR /usr/src/app/
+RUN go mod download
 
-RUN --mount=type=cache,target=/go/pkg/mod/ \
-    --mount=type=bind,source=./src/checkout/go.sum,target=go.sum \
-    --mount=type=bind,source=./src/checkout/go.mod,target=go.mod \
-    go mod download
-
-RUN --mount=type=cache,target=/go/pkg/mod/ \
-    --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=bind,rw,source=./src/checkout,target=. \
-    go build -ldflags "-s -w" -o /go/bin/checkout/ ./
+RUN go build -o ./checkout .
 
 FROM alpine
 
-WORKDIR /usr/src/app/
+WORKDIR /usr/src/app
 
-COPY --from=builder /go/bin/checkout/ ./
+COPY --from=builder /usr/src/app/checkout .
 
-EXPOSE ${CHECKOUT_PORT}
-ENTRYPOINT [ "./checkout" ]
+ENV CHECKOUT_PORT=8089
+
+ENTRYPOINT ["./checkout"]
